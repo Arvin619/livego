@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package grpc_api;
+
+option go_package = "github.com/Arvin619/livego/protocol/grpc/proto";
+
+service BackstageManager {
+  rpc GetRoomKey(GetRoomKeyRequest) returns (GetRoomKeyResponse) {}
+}
+
+message GetRoomKeyRequest {
+  string appName = 1;
+  string roomChannel = 2;
+}
+
+message GetRoomKeyResponse {
+  string roomKey = 1;
+}

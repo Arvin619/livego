@@ -31,6 +31,7 @@ type Application struct {
 	Flv        bool     `mapstructure:"flv"`
 	Api        bool     `mapstructure:"api"`
 	StaticPush []string `mapstructure:"static_push"`
+	Grpc       bool     `mapstructure:"grpc"`
 }
 
 type Applications []Application
@@ -58,6 +59,7 @@ type ServerCfg struct {
 	GopNum          int          `mapstructure:"gop_num"`
 	JWT             JWT          `mapstructure:"jwt"`
 	Server          Applications `mapstructure:"server"`
+	GrpcAddr        string       `mapstructure:"grpc_addr"`
 }
 
 // default config
@@ -74,6 +76,7 @@ var defaultConf = ServerCfg{
 	ReadTimeout:     10,
 	EnableTLSVerify: true,
 	GopNum:          1,
+	GrpcAddr:        ":8080",
 	Server: Applications{{
 		Appname:    "live",
 		Live:       true,
@@ -133,6 +136,7 @@ func initDefault() {
 	pflag.Int("write_timeout", 10, "write time out")
 	pflag.Int("gop_num", 1, "gop num")
 	pflag.Bool("enable_tls_verify", true, "Use system root CA to verify RTMPS connection, set this flag to false on Windows")
+	pflag.String("grpc_addr", ":8080", "HTTP manage interface server listen address")
 	pflag.Parse()
 	Config.BindPFlags(pflag.CommandLine)
 

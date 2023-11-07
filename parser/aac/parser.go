@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/gwuhaolin/livego/av"
+	"github.com/Arvin619/livego/av"
 )
 
 type mpegExtension struct {
@@ -66,7 +66,7 @@ func (parser *Parser) adts(src []byte, w io.Writer) error {
 
 	frameLen := uint16(len(src)) + 7
 
-	//first write adts header
+	// first write adts header
 	parser.adtsHeader[0] = 0xff
 	parser.adtsHeader[1] = 0xf1
 

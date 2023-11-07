@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/gwuhaolin/livego/av"
-	"github.com/gwuhaolin/livego/configure"
-	"github.com/gwuhaolin/livego/protocol/rtmp/core"
+	"github.com/Arvin619/livego/av"
+	"github.com/Arvin619/livego/configure"
+	"github.com/Arvin619/livego/protocol/rtmp/core"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -148,9 +148,9 @@ func (self *StaticPush) sendPacket(p *av.Packet) {
 	cs.Length = uint32(len(p.Data))
 	cs.StreamID = self.connectClient.GetStreamId()
 	cs.Timestamp = p.TimeStamp
-	//cs.Timestamp += v.BaseTimeStamp()
+	// cs.Timestamp += v.BaseTimeStamp()
 
-	//log.Printf("Static sendPacket: rtmpurl=%s, length=%d, streamid=%d",
+	// log.Printf("Static sendPacket: rtmpurl=%s, length=%d, streamid=%d",
 	//	self.RtmpUrl, len(p.Data), cs.StreamID)
 	if p.IsVideo {
 		cs.TypeID = av.TAG_VIDEO

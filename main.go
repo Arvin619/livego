@@ -3,16 +3,17 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/Arvin619/livego/protocol/grpc"
 	"net"
 	"path"
 	"runtime"
 	"time"
 
-	"github.com/gwuhaolin/livego/configure"
-	"github.com/gwuhaolin/livego/protocol/api"
-	"github.com/gwuhaolin/livego/protocol/hls"
-	"github.com/gwuhaolin/livego/protocol/httpflv"
-	"github.com/gwuhaolin/livego/protocol/rtmp"
+	"github.com/Arvin619/livego/configure"
+	"github.com/Arvin619/livego/protocol/api"
+	"github.com/Arvin619/livego/protocol/hls"
+	"github.com/Arvin619/livego/protocol/httpflv"
+	"github.com/Arvin619/livego/protocol/rtmp"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -131,6 +132,29 @@ func startAPI(stream *rtmp.RtmpStream) {
 	}
 }
 
+func startGrpc(stream *rtmp.RtmpStream) {
+	grpcAddr := configure.Config.GetString("grpc_addr")
+	rtmpAddr := configure.Config.GetString("rtmp_addr")
+
+	if grpcAddr != "" {
+		grpcListen, err := net.Listen("tcp", grpcAddr)
+		if err != nil {
+			log.Fatal(err)
+		}
+		grpcServer := grpc.NewServer(stream, rtmpAddr)
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Error("grpc server panic: ", r)
+				}
+			}()
+			log.Info("grpc server listen On ", grpcAddr)
+			grpcServer.Serve(grpcListen)
+		}()
+	}
+
+}
+
 func init() {
 	log.SetFormatter(&log.TextFormatter{
 		FullTimestamp: true,
@@ -162,6 +186,9 @@ func main() {
 	configure.Config.UnmarshalKey("server", &apps)
 	for _, app := range apps {
 		stream := rtmp.NewRtmpStream()
+		if app.Grpc {
+			startGrpc(stream)
+		}
 		var hlsServer *hls.Server
 		if app.Hls {
 			hlsServer = startHls()

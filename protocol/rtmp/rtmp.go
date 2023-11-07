@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gwuhaolin/livego/utils/uid"
+	"github.com/Arvin619/livego/utils/uid"
 
-	"github.com/gwuhaolin/livego/av"
-	"github.com/gwuhaolin/livego/configure"
-	"github.com/gwuhaolin/livego/container/flv"
-	"github.com/gwuhaolin/livego/protocol/rtmp/core"
+	"github.com/Arvin619/livego/av"
+	"github.com/Arvin619/livego/configure"
+	"github.com/Arvin619/livego/container/flv"
+	"github.com/Arvin619/livego/protocol/rtmp/core"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -111,6 +111,11 @@ func (s *Server) handleConn(conn *core.Conn) error {
 		return err
 	}
 
+	// example: rtmp://localhost:1935/live/abcde12345
+	// appname: live
+	// name   : abcde12345
+	//
+	// 這裡獲得的 name 為金鑰 (channelkey)
 	appname, name, _ := connServer.GetInfo()
 
 	if ret := configure.CheckAppName(appname); !ret {
@@ -139,6 +144,12 @@ func (s *Server) handleConn(conn *core.Conn) error {
 			log.Error("CheckKey err: ", err)
 			return err
 		}
+
+		// example: http://localhost:8090/control/get?room=movie
+		//        : rtmp://localhost:1935/live/abc123
+		//
+		// 這裡會將 roomName 取代 原本金鑰
+		// connServer.PublishInfo.Name:   abc123 => movie
 		connServer.PublishInfo.Name = channel
 		if pushlist, ret := configure.GetStaticPushUrlList(appname); ret && (pushlist != nil) {
 			log.Debugf("GetStaticPushUrlList: %v", pushlist)
@@ -283,7 +294,6 @@ func (v *VirWriter) DropPacket(pktQue chan *av.Packet, info av.Info) {
 	log.Debug("packet queue len: ", len(pktQue))
 }
 
-//
 func (v *VirWriter) Write(p *av.Packet) (err error) {
 	err = nil
 
@@ -398,7 +408,7 @@ func (v *VirReader) SaveStatics(streamid uint32, length uint64, isVideoFlag bool
 	} else if (nowInMS - v.ReadBWInfo.LastTimestamp) >= SAVE_STATICS_INTERVAL {
 		diffTimestamp := (nowInMS - v.ReadBWInfo.LastTimestamp) / 1000
 
-		//log.Printf("now=%d, last=%d, diff=%d", nowInMS, v.ReadBWInfo.LastTimestamp, diffTimestamp)
+		// log.Printf("now=%d, last=%d, diff=%d", nowInMS, v.ReadBWInfo.LastTimestamp, diffTimestamp)
 		v.ReadBWInfo.VideoSpeedInBytesperMS = (v.ReadBWInfo.VideoDatainBytes - v.ReadBWInfo.LastVideoDatainBytes) * 8 / uint64(diffTimestamp) / 1000
 		v.ReadBWInfo.AudioSpeedInBytesperMS = (v.ReadBWInfo.AudioDatainBytes - v.ReadBWInfo.LastAudioDatainBytes) * 8 / uint64(diffTimestamp) / 1000
 

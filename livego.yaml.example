@@ -27,3 +27,4 @@ server:
   hls: true
   api: true
   flv: true
+  grpc: true

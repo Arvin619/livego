@@ -34,3 +34,6 @@ build-linux:
 dockerize:
 	docker build -t $(DOCKER_ACC)/$(DOCKER_REPO):$(TAG) .
 	docker push $(DOCKER_ACC)/$(DOCKER_REPO):$(TAG)
+
+gen-grpc:
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative ./protocol/grpc/proto/*.proto

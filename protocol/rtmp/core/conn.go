@@ -5,8 +5,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/gwuhaolin/livego/utils/pio"
-	"github.com/gwuhaolin/livego/utils/pool"
+	"github.com/Arvin619/livego/utils/pio"
+	"github.com/Arvin619/livego/utils/pool"
 )
 
 const (
@@ -169,10 +169,10 @@ const (
 )
 
 /*
-   +------------------------------+-------------------------
-   |     Event Type ( 2- bytes )  | Event Data
-   +------------------------------+-------------------------
-   Pay load for the ‘User Control Message’.
++------------------------------+-------------------------
+|     Event Type ( 2- bytes )  | Event Data
++------------------------------+-------------------------
+Pay load for the ‘User Control Message’.
 */
 func (conn *Conn) userControlMsg(eventType, buflen uint32) ChunkStream {
 	var ret ChunkStream
