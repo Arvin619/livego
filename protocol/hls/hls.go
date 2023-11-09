@@ -2,6 +2,8 @@ package hls
 
 import (
 	"fmt"
+	pb "github.com/Arvin619/livego/protocol/grpc/proto"
+	googlegprc "google.golang.org/grpc"
 	"net"
 	"net/http"
 	"path"
@@ -13,9 +15,11 @@ import (
 	"github.com/Arvin619/livego/configure"
 
 	"github.com/Arvin619/livego/av"
+	"github.com/Arvin619/livego/protocol/grpc"
 
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
+	grpcStatus "google.golang.org/grpc/status"
 )
 
 const (
@@ -42,11 +46,14 @@ var crossdomainxml = []byte(`<?xml version="1.0" ?>
 type Server struct {
 	listener net.Listener
 	conns    *sync.Map
+
+	backstageManagerClient pb.BackstageManagerClient
 }
 
-func NewServer() *Server {
+func NewServer(conn *googlegprc.ClientConn) *Server {
 	ret := &Server{
-		conns: &sync.Map{},
+		conns:                  &sync.Map{},
+		backstageManagerClient: pb.NewBackstageManagerClient(conn),
 	}
 	go ret.checkStop()
 	return ret
@@ -182,6 +189,48 @@ func (server *Server) setRoute() *gin.Engine {
 	r.Use(gin.Logger(), gin.Recovery())
 	r.Use(server.crossdomain())
 	r.GET(prePath+"/*filepath", server.getSource())
+
+	apiV1 := r.Group("/api/v1")
+	{
+		apiV1.GET("/get", func(ctx *gin.Context) {
+			appName := ctx.GetString("appName")
+			if appName == "" {
+				appName = "live"
+			}
+
+			room := ctx.Query("room")
+			res, err := server.backstageManagerClient.GetRoomKey(ctx, &pb.GetRoomKeyRequest{
+				AppName:     appName,
+				RoomChannel: room,
+			})
+			if err != nil {
+				statusErr, ok := grpcStatus.FromError(err)
+				if !ok {
+					ctx.JSON(http.StatusInternalServerError, gin.H{
+						"data":  nil,
+						"error": "Internal Server Error",
+					})
+					return
+				} else if grpc.HTTPStatusFromCode(statusErr.Code()) == http.StatusBadRequest {
+					ctx.JSON(http.StatusBadRequest, gin.H{
+						"data":  nil,
+						"error": "url: /api/v1/get?room=<ROOM_NAME>",
+					})
+					return
+				} else {
+					ctx.JSON(grpc.HTTPStatusFromCode(statusErr.Code()), gin.H{
+						"data":  nil,
+						"error": statusErr.Message(),
+					})
+					return
+				}
+			}
+			ctx.JSON(http.StatusOK, gin.H{
+				"data":  res.RoomKey,
+				"error": nil,
+			})
+		})
+	}
 	return r
 }
 

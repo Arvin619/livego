@@ -4,6 +4,8 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/Arvin619/livego/protocol/grpc"
+	googlegrpc "google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"net"
 	"path"
 	"runtime"
@@ -26,8 +28,17 @@ func startHls() *hls.Server {
 	if err != nil {
 		log.Fatal(err)
 	}
+	grpcAddr := configure.Config.GetString("grpc_addr")
+	if grpcAddr == "" {
+		log.Fatal("grpc addr is empty")
+	}
 
-	hlsServer := hls.NewServer()
+	conn, err := googlegrpc.Dial(grpcAddr, googlegrpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	hlsServer := hls.NewServer(conn)
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
