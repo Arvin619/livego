@@ -60,9 +60,6 @@ func (s *Server) GetRoomKey(ctx context.Context, request *pb.GetRoomKeyRequest) 
 }
 
 func (s *Server) Serve(l net.Listener) error {
-	defer func() {
-		l.Close()
-	}()
 	s.grpcServer.Serve(l)
 
 	return nil
