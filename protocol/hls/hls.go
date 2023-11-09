@@ -14,11 +14,16 @@ import (
 
 	"github.com/Arvin619/livego/av"
 
+	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
 
 const (
 	duration = 3000
+)
+
+const (
+	prePath = "/source"
 )
 
 var (
@@ -48,10 +53,13 @@ func NewServer() *Server {
 }
 
 func (server *Server) Serve(listener net.Listener) error {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		server.handle(w, r)
-	})
+	// mux := http.NewServeMux()
+	// mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	// 	server.handle(w, r)
+	// })
+
+	mux := server.setRoute()
+
 	server.listener = listener
 
 	if configure.Config.GetBool("use_hls_https") {
@@ -167,4 +175,95 @@ func (server *Server) parseTs(pathstr string) (key string, err error) {
 	key = paths[0] + "/" + paths[1]
 
 	return
+}
+
+func (server *Server) setRoute() *gin.Engine {
+	r := gin.New()
+	r.Use(gin.Logger(), gin.Recovery())
+	r.Use(server.crossdomain())
+	r.GET(prePath+"/*filepath", server.getSource())
+	return r
+}
+
+func (server *Server) crossdomain() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		if path.Base(ctx.Request.URL.Path) == "crossdomain.xml" {
+			// w.Header().Set("Content-Type", "application/xml")
+			// w.Write(crossdomainxml)
+			ctx.Header("Content-Type", "application/xml")
+			ctx.Writer.Write(crossdomainxml)
+			ctx.Abort()
+			return
+		}
+		ctx.Next()
+	}
+}
+
+func (server *Server) getSource() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		filePath := ctx.Param("filepath")
+		switch path.Ext(filePath) {
+		case ".m3u8":
+			key, _ := server.parseM3u8(filePath)
+			conn := server.getConn(key)
+			if conn == nil {
+				// http.Error(w, ErrNoPublisher.Error(), http.StatusForbidden)
+				ctx.String(http.StatusForbidden, ErrNoPublisher.Error())
+				return
+			}
+			tsCache := conn.GetCacheInc()
+			if tsCache == nil {
+				// http.Error(w, ErrNoPublisher.Error(), http.StatusForbidden)
+				ctx.String(http.StatusForbidden, ErrNoPublisher.Error())
+				return
+			}
+			body, err := tsCache.GenM3U8PlayListWithPrePath(prePath)
+			if err != nil {
+				log.Debug("GenM3U8PlayList error: ", err)
+				// http.Error(w, err.Error(), http.StatusBadRequest)
+				ctx.String(http.StatusBadRequest, err.Error())
+				return
+			}
+
+			// w.Header().Set("Access-Control-Allow-Origin", "*")
+			// w.Header().Set("Cache-Control", "no-cache")
+			// w.Header().Set("Content-Type", "application/x-mpegURL")
+			// w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+			ctx.Header("Access-Control-Allow-Origin", "*")
+			ctx.Header("Cache-Control", "no-cache")
+			ctx.Header("Content-Type", "application/x-mpegURL")
+			ctx.Header("Content-Length", strconv.Itoa(len(body)))
+			ctx.Writer.Write(body)
+		case ".ts":
+			key, _ := server.parseTs(filePath)
+			conn := server.getConn(key)
+			if conn == nil {
+				// http.Error(w, ErrNoPublisher.Error(), http.StatusForbidden)
+				ctx.String(http.StatusForbidden, ErrNoPublisher.Error())
+				return
+			}
+			tsCache := conn.GetCacheInc()
+			if tsCache == nil {
+				// http.Error(w, ErrNoPublisher.Error(), http.StatusForbidden)
+				ctx.String(http.StatusForbidden, ErrNoPublisher.Error())
+				return
+			}
+			item, err := tsCache.GetItem(filePath)
+			if err != nil {
+				log.Debug("GetItem error: ", err)
+				// http.Error(w, err.Error(), http.StatusBadRequest)
+				ctx.String(http.StatusBadRequest, err.Error())
+				return
+			}
+			// w.Header().Set("Access-Control-Allow-Origin", "*")
+			// w.Header().Set("Content-Type", "video/mp2ts")
+			// w.Header().Set("Content-Length", strconv.Itoa(len(item.Data)))
+			ctx.Header("Access-Control-Allow-Origin", "*")
+			ctx.Header("Content-Type", "video/mp2ts")
+			ctx.Header("Content-Length", strconv.Itoa(len(item.Data)))
+			ctx.Writer.Write(item.Data)
+		default:
+			ctx.String(http.StatusNotFound, "file not found")
+		}
+	}
 }
